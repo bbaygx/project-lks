@@ -7,8 +7,10 @@ import * as z from "zod";
 export const SignUpFormSchema = z.object({
   email: z.string().email(),
   displayName: z.string().min(3),
-  password: z.string(),
-  confirmPassword: z.string(),
+  password: z.string().min(8, { message: "Password must be 8 character" }),
+  confirmPassword: z
+    .string()
+    .min(8, { message: "Confirm Password must be 8 character" }),
   profilePic: z
     .any()
     .refine((files) => {

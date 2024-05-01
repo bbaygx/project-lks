@@ -10,16 +10,25 @@ import {
 import { Input } from "@/components/ui/input";
 import { SignInFormSchema } from "@/schemas/schema";
 import { useCallback, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import * as z from "zod";
 import { GlobalWorld } from "@/components/GlobalWorld";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { ICON } from "@/icons/icons";
 import { motion } from "framer-motion";
+import { SignInForm } from "@/api/api";
+import { toast } from "@/components/ui/use-toast";
+import { ToastAction } from "@/components/ui/toast";
+
+interface SignInFormResponse {
+  statusCode?: number;
+  // Jika ada properti lain yang dikembalikan oleh SignUpForm, tambahkan di sini
+}
 
 export default function SignIn() {
   const [seePassword, setSeePassword] = useState<boolean>(false);
+  const navigate = useNavigate();
 
   const initializeForm = useCallback(() => {
     return useForm<z.infer<typeof SignInFormSchema>>({
@@ -33,9 +42,38 @@ export default function SignIn() {
 
   const form = initializeForm();
 
-  function onSubmit(values: z.infer<typeof SignInFormSchema>) {
-    console.log(values);
-    form.reset();
+  async function onSubmit(values: z.infer<typeof SignInFormSchema>) {
+    try {
+      const result = await SignInForm(values);
+      const signInResult = result as SignInFormResponse;
+
+      // Jika permintaan berhasil
+      if (signInResult?.statusCode === 200) {
+        toast({
+          title: "Success!",
+          description: "Successfully login",
+          type: "background",
+        });
+        form.reset(); // Reset form fields
+        navigate("/");
+      } else {
+        // Jika terjadi kesalahan pada sisi server
+        toast({
+          title: "Error!",
+          description: "Something went wrong on our end.",
+          type: "foreground",
+          action: <ToastAction altText="Try again">Try again</ToastAction>,
+        });
+      }
+    } catch (error) {
+      // Jika terjadi kesalahan pada permintaan atau jaringan
+      toast({
+        title: "Error!",
+        description: "Failed to create account. Please try again later.",
+        type: "background",
+        action: <ToastAction altText="Try again">Try again</ToastAction>,
+      });
+    }
   }
 
   const GlobalWorldComponent = useMemo(() => {
@@ -120,7 +158,6 @@ export default function SignIn() {
           </Form>
         </div>
         <div className="relative hidden bg-muted lg:block">
-
           {GlobalWorldComponent}
         </div>
       </div>

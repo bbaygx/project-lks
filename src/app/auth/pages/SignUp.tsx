@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { SignUpFormSchema } from "@/schemas/schema";
 import { useCallback, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import * as z from "zod";
 import { GlobalWorld } from "@/components/GlobalWorld";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,10 +19,17 @@ import { useForm } from "react-hook-form";
 import { ICON } from "@/icons/icons";
 import { useToast } from "@/components/ui/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import { SignUpForm } from "@/api/api";
+
+interface SignUpFormResponse {
+  statusCode?: number;
+  // Jika ada properti lain yang dikembalikan oleh SignUpForm, tambahkan di sini
+}
 
 export default function SignUp() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [seePassword, setSeePassword] = useState<boolean>(false);
+  const navigate = useNavigate();
   // const [error, setError] = useState("");
   const { toast } = useToast();
 
@@ -41,7 +48,7 @@ export default function SignUp() {
 
   const form = initializeForm();
 
-  function onSubmit(values: z.infer<typeof SignUpFormSchema>) {
+  async function onSubmit(values: z.infer<typeof SignUpFormSchema>) {
     // validasi jika password tidak sama
     if (values.password !== values.confirmPassword) {
       return toast({
@@ -52,8 +59,45 @@ export default function SignUp() {
       });
     }
 
-    console.log(values);
-    form.reset();
+    const formData = new FormData();
+
+    formData.append("email", values.email);
+    formData.append("displayName", values.displayName);
+    formData.append("password", values.password);
+    formData.append("confirmPassword", values.confirmPassword);
+    formData.append("profilePic", values.profilePic[0]);
+
+    try {
+      const result = await SignUpForm(formData);
+      const signUpResult = result as SignUpFormResponse;
+
+      // Jika permintaan berhasil
+      if (signUpResult?.statusCode === 201) {
+        toast({
+          title: "Success!",
+          description: "Your account has been successfully created.",
+          type: "background",
+        });
+        form.reset(); // Reset form fields
+        navigate("/");
+      } else {
+        // Jika terjadi kesalahan pada sisi server
+        toast({
+          title: "Error!",
+          description: "Something went wrong on our end.",
+          type: "foreground",
+          action: <ToastAction altText="Try again">Try again</ToastAction>,
+        });
+      }
+    } catch (error) {
+      // Jika terjadi kesalahan pada permintaan atau jaringan
+      toast({
+        title: "Error!",
+        description: "Failed to create account. Please try again later.",
+        type: "background",
+        action: <ToastAction altText="Try again">Try again</ToastAction>,
+      });
+    }
   }
 
   const GlobalWorldComponent = useMemo(() => {
